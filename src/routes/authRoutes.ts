@@ -1,11 +1,10 @@
 import { Router } from 'express';
 import AuthController from '../controllers/authController';
 import { validateRegistration } from '../middleware/validateRegistration';
-import pool from '../../config/database';
 
 const router = Router();
 
-const authController = new AuthController(pool);
+const authController = new AuthController();
 
 router.post('/register', validateRegistration, authController.registerUser.bind(authController));
 

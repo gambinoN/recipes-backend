@@ -1,96 +1,67 @@
 import { Request, Response } from 'express';
-import bcrypt from 'bcrypt';
-import mysql from 'mysql2/promise';
-import { registerPayload } from '../model/payload/registerPayload';
-import { loginPayload } from '../model/payload/loginPayload';
+import { Repository } from 'typeorm';
 import { User } from '../model/database/User';
+import { AppDataSource } from '../../config/database';
 import jwt from 'jsonwebtoken';
 
 class AuthController {
-    private db: mysql.Pool;
+    private userRepository: Repository<User>;
 
-    constructor(db: mysql.Pool) {
-        this.db = db;
+    constructor() {
+      this.userRepository = AppDataSource.getRepository(User);
     }
 
-    public async registerUser(req: Request, res: Response): Promise<void> {
-        try {
-            const { username, email, password } = req.body;
+  public async registerUser(req: Request, res: Response): Promise<void> {
+    try {
+      const { username, email, password } = req.body;
+      const userRepository = AppDataSource.getRepository(User);
 
-            const payload = new registerPayload(username, email, password);
-            
-            if (!payload.isValid()) {
-                res.status(400).json({ message: 'Username, email, and password are required' });
-                return;
-            }
+      const existingUser = await userRepository.findOne({ where: [{ username }, { email }] });
 
-            if (!payload.isEmailValid()) {
-                res.status(400).json({ message: 'Email is not formatted properly' });
-                return;
-            }
+      if (existingUser) {
+        res.status(409).json({ message: 'Username or email already exists' });
+        return;
+      }
 
-            const [existingUser] = await this.db.query('SELECT * FROM users WHERE username = ? OR email = ?', [
-                payload.username,
-                payload.email,
-            ]);
+      const user = this.userRepository.create({
+        username,
+        email,
+        password
+      });
 
-            if (Array.isArray(existingUser) && existingUser.length > 0) {
-                res.status(409).json({ message: 'Username or email already exists' });
-                return;
-            }
+      await this.userRepository.save(user);
 
-            const hashedPassword = await bcrypt.hash(password, 10);
-
-            const [result] = await this.db.query('INSERT INTO users (username, email, password) VALUES (?, ?, ?)', [
-                payload.username,
-                payload.email,
-                hashedPassword,
-            ]);
-
-            const userId = (result as any).insertId;
-
-            const newUser = new User(userId, payload.username, payload.email, hashedPassword);
-
-            res.status(201).json({ message: 'User registered successfully!', user: newUser.serialize() });
-        } catch (error) {
-            console.error('Error registering user:', error);
-            res.status(500).json({ message: 'Internal Server Error' });
-        }
+      res.status(201).json({ message: 'User registered successfully!', user: user.serialize() });
+    } catch (error) {
+      console.error('Error registering user:', error);
+      res.status(500).json({ message: 'Internal Server Error' });
     }
+  }
 
-    public async loginUser(req: Request, res: Response): Promise<void> {
-        const { email, password } = req.body;
-    
-        try {
-            const [rows] = await this.db.query('SELECT * FROM users WHERE email = ?', [email]) as [User[], mysql.FieldPacket[]];
-    
-            if (Array.isArray(rows) && rows.length === 0) {
-                res.status(401).json({ message: 'Invalid email or password' });
-                return;
-            }
-    
-            const userRow = rows[0];
-            const user = new User(userRow.id, userRow.username, userRow.email, userRow.password);
-    
-            const isMatch = await user.comparePassword(password);
-    
-            if (!isMatch) {
-                res.status(401).json({ message: 'Invalid email or password' });
-                return;
-            }
-    
-            const token = jwt.sign(
-                { userId: user.id, email: user.email },
-                process.env.JWT_SECRET as string,
-                { expiresIn: '1h' }
-            );
-    
-            res.json({ token });
-        } catch (error) {
-            console.error('Login error:', error);
-            res.status(500).json({ message: 'Internal server error' });
-        }
+  public async loginUser(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, password } = req.body;
+      const userRepository = AppDataSource.getRepository(User);
+
+      const user = await userRepository.findOne({ where: { email } });
+
+      if (!user || !(await user.comparePassword(password))) {
+        res.status(401).json({ message: 'Invalid email or password' });
+        return;
+      }
+
+      const token = jwt.sign(
+        { userId: user.id, email: user.email },
+        process.env.JWT_SECRET as string,
+        { expiresIn: '1h' }
+      );
+
+      res.json({ token });
+    } catch (error) {
+      console.error('Login error:', error);
+      res.status(500).json({ message: 'Internal server error' });
     }
+  }
 }
 
 export default AuthController;

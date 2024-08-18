@@ -1,13 +1,25 @@
-import mysql from 'mysql2/promise';
+import { DataSource } from 'typeorm';
+import { User } from '../src/model/database/User';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const pool = mysql.createPool({
+export const AppDataSource = new DataSource({
+  type: 'mysql',
   host: process.env.DB_HOST,
-  user: process.env.DB_USER,
+  port: Number(process.env.DB_PORT),
+  username: process.env.DB_USER,
   password: process.env.DB_PASS,
   database: process.env.DB_NAME,
+  synchronize: true,  
+  logging: false,
+  entities: [User],
+  migrations: [],
+  subscribers: [],
 });
 
-export default pool;
+AppDataSource.initialize()
+  .then(() => {
+    console.log('Data Source has been initialized!');
+  })
+  .catch((error) => console.log('Error during Data Source initialization:', error));

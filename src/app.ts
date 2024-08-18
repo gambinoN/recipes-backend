@@ -3,6 +3,8 @@ import bodyParser from 'body-parser';
 import { json, urlencoded } from 'body-parser';
 import routes from './routes/authRoutes';
 import cors from 'cors';
+import 'reflect-metadata';
+
 
 const app = express();
 
