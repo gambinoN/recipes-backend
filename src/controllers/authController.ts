@@ -8,60 +8,53 @@ class AuthController {
     private userRepository: Repository<User>;
 
     constructor() {
-      this.userRepository = AppDataSource.getRepository(User);
+        this.userRepository = AppDataSource.getRepository(User);
     }
 
-  public async registerUser(req: Request, res: Response): Promise<void> {
-    try {
-      const { username, email, password } = req.body;
-      const userRepository = AppDataSource.getRepository(User);
+    public async registerUser(req: Request, res: Response): Promise<void> {
+        try {
+            const { username, email, password } = req.body;
 
-      const existingUser = await userRepository.findOne({ where: [{ username }, { email }] });
+            const existingUser = await this.userRepository.findOne({ where: [{ username }, { email }] });
 
-      if (existingUser) {
-        res.status(409).json({ message: 'Username or email already exists' });
-        return;
-      }
+            if (existingUser) {
+                res.status(409).json({ message: 'Username or email already exists' });
+                return;
+            }
 
-      const user = this.userRepository.create({
-        username,
-        email,
-        password
-      });
+            const user = this.userRepository.create({ username, email, password });
+            await this.userRepository.save(user);
 
-      await this.userRepository.save(user);
-
-      res.status(201).json({ message: 'User registered successfully!', user: user.serialize() });
-    } catch (error) {
-      console.error('Error registering user:', error);
-      res.status(500).json({ message: 'Internal Server Error' });
+            res.status(201).json({ message: 'User registered successfully!', user: user.serialize() });
+        } catch (error) {
+            console.error('Error registering user:', error);
+            res.status(500).json({ message: 'Internal Server Error' });
+        }
     }
-  }
 
-  public async loginUser(req: Request, res: Response): Promise<void> {
-    try {
-      const { email, password } = req.body;
-      const userRepository = AppDataSource.getRepository(User);
+    public async loginUser(req: Request, res: Response): Promise<void> {
+        try {
+            const { email, password } = req.body;
 
-      const user = await userRepository.findOne({ where: { email } });
+            const user = await this.userRepository.findOne({ where: { email } });
 
-      if (!user || !(await user.comparePassword(password))) {
-        res.status(401).json({ message: 'Invalid email or password' });
-        return;
-      }
+            if (!user || !(await user.comparePassword(password))) {
+                res.status(401).json({ message: 'Invalid email or password' });
+                return;
+            }
 
-      const token = jwt.sign(
-        { userId: user.id, email: user.email },
-        process.env.JWT_SECRET as string,
-        { expiresIn: '1h' }
-      );
+            const token = jwt.sign(
+                { userId: user.id, email: user.email },
+                process.env.JWT_SECRET as string,
+                { expiresIn: '1h' }
+            );
 
-      res.json({ token });
-    } catch (error) {
-      console.error('Login error:', error);
-      res.status(500).json({ message: 'Internal server error' });
+            res.json({ token });
+        } catch (error) {
+            console.error('Login error:', error);
+            res.status(500).json({ message: 'Internal Server Error' });
+        }
     }
-  }
 }
 
 export default AuthController;
