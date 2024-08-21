@@ -3,6 +3,8 @@ import { Repository } from 'typeorm';
 import { User } from '../model/database/User';
 import { AppDataSource } from '../../config/database';
 import jwt from 'jsonwebtoken';
+import { v4 } from 'uuid';
+import sendVerificationEmail from '../util/emailUtils';
 
 class AuthController {
     private userRepository: Repository<User>;
@@ -13,6 +15,8 @@ class AuthController {
 
     public async registerUser(req: Request, res: Response): Promise<void> {
         try {
+            const verificationToken = v4();
+
             const { username, email, password } = req.body;
 
             const existingUser = await this.userRepository.findOne({ where: [{ username }, { email }] });
@@ -24,6 +28,10 @@ class AuthController {
 
             const user = this.userRepository.create({ username, email, password });
             await this.userRepository.save(user);
+
+            const verificationLink = `http://localhost:3000/verify/${verificationToken}`;
+
+            sendVerificationEmail(email, verificationLink);
 
             res.status(201).json({ message: 'User registered successfully!', user: user.serialize() });
         } catch (error) {
