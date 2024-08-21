@@ -5,6 +5,7 @@ import { AppDataSource } from '../../config/database';
 import jwt from 'jsonwebtoken';
 import { v4 } from 'uuid';
 import sendVerificationEmail from '../util/emailUtils';
+import { ApiResponse } from '../model/response/ApiResponse';
 
 class AuthController {
     private userRepository: Repository<User>;
@@ -22,7 +23,7 @@ class AuthController {
             const existingUser = await this.userRepository.findOne({ where: [{ username }, { email }] });
 
             if (existingUser) {
-                res.status(409).json({ message: 'Username or email already exists' });
+                res.status(409).json(new ApiResponse(null, "User already exists, please login to your account!"));
                 return;
             }
 
@@ -33,10 +34,10 @@ class AuthController {
 
             sendVerificationEmail(email, verificationLink);
 
-            res.status(201).json({ message: 'User registered successfully!', user: user.serialize() });
+            res.status(201).json(new ApiResponse(user.serialize(), null));
         } catch (error) {
             console.error('Error registering user:', error);
-            res.status(500).json({ message: 'Internal Server Error' });
+            res.status(500).json(new ApiResponse(null, 'Internal Server Error'));
         }
     }
 
@@ -47,7 +48,7 @@ class AuthController {
             const user = await this.userRepository.findOne({ where: { email } });
     
             if (!user || !(await user.comparePassword(password))) {
-                res.status(401).json({ message: 'Invalid email or password' });
+                res.status(401).json(new ApiResponse(null, 'Invalid email or password'));
                 return;
             }
     
@@ -59,7 +60,7 @@ class AuthController {
     
             res.json({ token });
         } catch (error) {
-            res.status(500).json({ message: 'Internal Server Error' });
+            res.status(500).json(new ApiResponse(null, 'Internal Server Error'));
         }
     }
     
