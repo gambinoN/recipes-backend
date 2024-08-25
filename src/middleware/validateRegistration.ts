@@ -5,7 +5,8 @@ export const validateRegistration = (req: Request, res: Response, next: NextFunc
     const {username, email, password} = req.body;
 
     if(!username || !email || !password) {
-        res.status(400).json(new ApiResponse(null, 'Missing required fields!'));
+        return res.status(400).json(new ApiResponse(null, 'Missing required fields!'));
+    } else {
+        next();
     }
-    next();
 }

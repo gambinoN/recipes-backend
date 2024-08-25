@@ -16,6 +16,7 @@ class AuthController {
 
     public async registerUser(req: Request, res: Response): Promise<void> {
         try {
+            const isVerified = false;
             const verificationToken = v4();
 
             const { username, email, password } = req.body;
@@ -27,7 +28,7 @@ class AuthController {
                 return;
             }
 
-            const user = this.userRepository.create({ username, email, password });
+            const user = this.userRepository.create({ username, email, password, verificationToken, isVerified });
             await this.userRepository.save(user);
 
             const verificationLink = `http://localhost:3000/verify/${verificationToken}`;
@@ -46,6 +47,12 @@ class AuthController {
             const { email, password } = req.body;
     
             const user = await this.userRepository.findOne({ where: { email } });
+            console.log(user)
+
+            if(!user?.isVerified) {
+                res.status(401).json(new ApiResponse(null, 'This user is not verified'));
+                return;
+            }
     
             if (!user || !(await user.comparePassword(password))) {
                 res.status(401).json(new ApiResponse(null, 'Invalid email or password'));
@@ -64,6 +71,31 @@ class AuthController {
         }
     }
     
+    public async verifyUser(req: Request, res: Response): Promise<void> {
+        try {
+            const { verificationToken } = req.params;
+    
+            const user = await this.userRepository.findOne({ where: { verificationToken } });
+    
+            if (!user) {
+                res.status(404).json(new ApiResponse(null, 'User not found'));
+                return;
+            }
+
+            if (user.isVerified) {
+                res.status(409).json(new ApiResponse(null, 'User is already verified'));
+                return;
+            }
+    
+            user.isVerified = true;
+    
+            await this.userRepository.save(user);
+    
+            res.status(200).json(new ApiResponse(null, 'User verified successfully'));
+        } catch (error) {
+            res.status(500).json(new ApiResponse(null, 'Internal Server Error'));
+        }
+    }
 }
 
 export default AuthController;

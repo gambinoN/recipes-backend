@@ -3,14 +3,14 @@ import nodemailer from 'nodemailer'
 const transporter = nodemailer.createTransport({
     service: 'Gmail',
     auth: {
-      user: 'gabelanedim@gmail.com', 
+      user: process.env.GMAIL_USER, 
       pass: process.env.GMAIL_PASS
     }
 });
 
 const sendVerificationEmail = (email: string, verificationLink: string) => {
     const mailOptions = {
-      from: 'gabelanedim@gmail.com',
+      from: process.env.GMAIL_USER,
       to: email,
       subject: 'Email Verification',
       html: `<p>Click <a href="${verificationLink}">here</a> to verify your email.</p>`

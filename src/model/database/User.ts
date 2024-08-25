@@ -16,12 +16,11 @@ export class User {
     @Column()
     password: string;
 
-    constructor(id: number, username: string, email: string, password: string) {
-        this.id = id;
-        this.username = username;
-        this.email = email;
-        this.password = password;
-    }
+    @Column()
+    verificationToken: string;
+
+    @Column({ default: false })
+    isVerified: boolean;
 
     @BeforeInsert()
     async hashPassword() {
@@ -37,6 +36,8 @@ export class User {
         id: this.id,
         username: this.username,
         email: this.email,
+        verificationToken: this.verificationToken,
+        isVerified: this.isVerified
         };
     }
 }
